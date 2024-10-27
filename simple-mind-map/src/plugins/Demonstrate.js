@@ -3,7 +3,8 @@ import {
   getNodeTreeBoundingRect,
   fullscrrenEvent,
   fullScreen,
-  exitFullScreen
+  exitFullScreen,
+  formatGetNodeGeneralization
 } from '../utils/index'
 import { keyMap } from '../core/command/keyMap'
 
@@ -13,16 +14,27 @@ const defaultConfig = {
   transition: 'all 0.3s ease-out', // 高亮框动画的过渡
   zIndex: 9999, // 高亮框元素的层级
   padding: 20, // 高亮框的内边距
-  margin: 50 // 高亮框的外边距
+  margin: 50, // 高亮框的外边距
+  openBlankMode: true // 是否开启填空模式，即带下划线的文本默认不显示，按回车键才依次显示
 }
 
 // 演示插件
 class Demonstrate {
   constructor(opt) {
     this.mindMap = opt.mindMap
+    // 是否正在演示中
+    this.isInDemonstrate = false
+    // 演示的步骤列表
     this.stepList = []
+    // 当前所在步骤
     this.currentStepIndex = 0
-    this.maskEl = null
+    // 当前所在步骤对应的节点实例
+    this.currentStepNode = null
+    // 当前所在步骤节点的下划线文本数据
+    this.currentUnderlineTextData = null
+    // 临时的样式剩余
+    this.tmpStyleEl = null
+    // 高亮样式元素
     this.highlightEl = null
     this.transformState = null
     this.renderTree = null
@@ -30,6 +42,7 @@ class Demonstrate {
       { ...defaultConfig },
       this.mindMap.opt.demonstrateConfig || {}
     )
+    this.needRestorePerformanceMode = false
   }
 
   // 进入演示模式
@@ -46,6 +59,11 @@ class Demonstrate {
   }
 
   _enter() {
+    this.isInDemonstrate = true
+    // 如果开启了性能模式，那么需要暂停
+    this.pausePerformanceMode()
+    // 添加演示用的临时的样式
+    this.addTmpStyles()
     // 记录演示前的画布状态
     this.transformState = this.mindMap.view.getTransformData()
     // 记录演示前的画布数据
@@ -59,8 +77,16 @@ class Demonstrate {
     // 计算步骤数据
     this.getStepList()
     // 收起所有节点
+    let wait = false
+    if (this.mindMap.renderer.isRendering) {
+      wait = true
+    }
     this.mindMap.execCommand('UNEXPAND_ALL', false)
     const onRenderEnd = () => {
+      if (wait) {
+        wait = false
+        return
+      }
       this.mindMap.off('node_tree_render_end', onRenderEnd)
       // 聚焦到第一步
       this.jump(this.currentStepIndex)
@@ -78,27 +104,72 @@ class Demonstrate {
     this.transformState = null
     this.stepList = []
     this.currentStepIndex = 0
+    this.currentStepNode = null
+    this.currentUnderlineTextData = null
     this.unBindEvent()
+    this.removeTmpStyles()
     this.removeHighlightEl()
     this.mindMap.command.recovery()
     this.mindMap.keyCommand.recovery()
+    this.restorePerformanceMode()
     this.mindMap.emit('exit_demonstrate')
+    this.isInDemonstrate = false
+  }
+
+  // 暂停性能模式
+  pausePerformanceMode() {
+    const { openPerformance } = this.mindMap.opt
+    if (openPerformance) {
+      this.needRestorePerformanceMode = true
+      this.mindMap.opt.openPerformance = false
+      this.mindMap.renderer.forceLoadNode()
+    }
+  }
+
+  // 恢复性能模式
+  restorePerformanceMode() {
+    if (!this.needRestorePerformanceMode) return
+    this.mindMap.opt.openPerformance = true
+    this.mindMap.renderer.forceLoadNode()
+  }
+
+  // 添加临时的样式
+  addTmpStyles() {
+    this.tmpStyleEl = document.createElement('style')
+    let cssText = `
+      /* 画布所有元素禁止响应鼠标事件 */
+      .smm-mind-map-container {
+        pointer-events: none;
+      }
+      /* 超链接图标允许响应鼠标事件 */
+      .smm-node a {
+        pointer-events: all;
+      }
+      /* 备注图标允许响应鼠标事件 */
+      .smm-node .smm-node-note {
+        pointer-events: all;
+      }
+    `
+    if (this.config.openBlankMode) {
+      cssText += `
+        /* 带下划线的文本内容全部隐藏 */
+        .smm-richtext-node-wrap u {
+          opacity: 0;
+        }
+      `
+    }
+    this.tmpStyleEl.innerText = cssText
+    document.head.appendChild(this.tmpStyleEl)
+  }
+
+  // 移除临时的样式
+  removeTmpStyles() {
+    if (this.tmpStyleEl) document.head.removeChild(this.tmpStyleEl)
   }
 
   // 创建高亮元素
   createHighlightEl() {
     if (!this.highlightEl) {
-      // 遮罩元素
-      this.maskEl = document.createElement('div')
-      this.maskEl.style.cssText = `
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            z-index: ${this.config.zIndex};
-        `
-      this.mindMap.el.appendChild(this.maskEl)
       // 高亮元素
       this.highlightEl = document.createElement('div')
       this.highlightEl.style.cssText = `
@@ -107,6 +178,7 @@ class Demonstrate {
             border-radius: ${this.config.borderRadius};
             transition: ${this.config.transition};
             z-index: ${this.config.zIndex + 1};
+            pointer-events: none;
         `
       this.mindMap.el.appendChild(this.highlightEl)
     }
@@ -117,10 +189,6 @@ class Demonstrate {
     if (this.highlightEl) {
       this.mindMap.el.removeChild(this.highlightEl)
       this.highlightEl = null
-    }
-    if (this.maskEl) {
-      this.mindMap.el.removeChild(this.maskEl)
-      this.maskEl = null
     }
   }
 
@@ -179,6 +247,9 @@ class Demonstrate {
     } else if (e.keyCode === keyMap.Esc) {
       // 退出演示
       this.exit()
+    } else if (e.keyCode === keyMap.Enter) {
+      // 回车键显示隐藏的下划线文本
+      this.showNextUnderlineText()
     }
   }
 
@@ -197,8 +268,31 @@ class Demonstrate {
     }
   }
 
+  // 显示隐藏的下划线文本
+  showNextUnderlineText() {
+    if (
+      !this.config.openBlankMode ||
+      !this.currentStepNode ||
+      !this.currentUnderlineTextData
+    )
+      return
+    const { index, list, length } = this.currentUnderlineTextData
+    if (index >= length) return
+    const node = list[index]
+    this.currentUnderlineTextData.index++
+    node.node.style.opacity = 1
+  }
+
   // 跳转到某一张
   jump(index) {
+    // 移除该当前下划线元素设置的样式
+    if (this.currentUnderlineTextData) {
+      this.currentUnderlineTextData.list.forEach(item => {
+        item.node.style.opacity = ''
+      })
+      this.currentUnderlineTextData = null
+    }
+    this.currentStepNode = null
     this.currentStepIndex = index
     this.mindMap.emit(
       'demonstrate_jump',
@@ -215,12 +309,26 @@ class Demonstrate {
     // 如果该节点实例不存在，那么先展开到该节点
     if (!node) {
       this.mindMap.renderer.expandToNodeUid(uid, () => {
-        this.jump(index)
+        const node = this.mindMap.renderer.findNodeByUid(uid)
+        // 展开后还是没找到，那么就别进入了，否则会死循环
+        if (node) {
+          this.jump(index)
+        }
       })
       return
     }
     // 1.聚焦到某个节点
     if (step.type === 'node') {
+      this.currentStepNode = node
+      // 当前节点存在带下划线的文本内容
+      const uNodeList = this.config.openBlankMode ? node.group.find('u') : null
+      if (uNodeList && uNodeList.length > 0) {
+        this.currentUnderlineTextData = {
+          index: 0,
+          list: uNodeList,
+          length: uNodeList.length
+        }
+      }
       // 适应画布大小
       this.mindMap.view.fit(
         () => {
@@ -283,6 +391,19 @@ class Demonstrate {
       this.stepList.push({
         type: 'node',
         node
+      })
+      // 添加概要步骤
+      const generalizationList = formatGetNodeGeneralization(node.data)
+      generalizationList.forEach(item => {
+        // 没有uid的直接过滤掉，否则会死循环
+        if (item.uid) {
+          this.stepList.push({
+            type: 'node',
+            node: {
+              data: item
+            }
+          })
+        }
       })
       if (node.children.length > 1) {
         this.stepList.push({

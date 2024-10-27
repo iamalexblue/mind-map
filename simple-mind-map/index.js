@@ -2,7 +2,7 @@ import View from './src/core/view/View'
 import Event from './src/core/event/Event'
 import Render from './src/core/render/Render'
 import merge from 'deepmerge'
-import theme from './src/themes'
+import theme from './src/theme'
 import Style from './src/core/render/node/Style'
 import KeyCommand from './src/core/command/KeyCommand'
 import Command from './src/core/command/Command'
@@ -19,11 +19,12 @@ import {
   getObjectChangedProps,
   isUndef,
   handleGetSvgDataExtraContent,
-  getNodeTreeBoundingRect
+  getNodeTreeBoundingRect,
+  mergeTheme
 } from './src/utils'
 import defaultTheme, {
   checkIsNodeSizeIndependenceConfig
-} from './src/themes/default'
+} from './src/theme/default'
 import { defaultOpt } from './src/constants/defaultOptions'
 
 //  思维导图
@@ -34,6 +35,7 @@ class MindMap {
    * @param {defaultOpt} opt
    */
   constructor(opt = {}) {
+    MindMap.instanceCount++
     // 合并选项
     this.opt = this.handleOpt(merge(defaultOpt, opt))
     // 预处理节点数据
@@ -50,9 +52,29 @@ class MindMap {
     this.initWidth = this.width
     this.initHeight = this.height
 
-    // 添加css
+    // 必要的css样式
     this.cssEl = null
-    this.addCss()
+    this.cssTextMap = {} // 该样式在实例化时会动态添加到页面，同时导出为svg时也会添加到svg源码中
+
+    // 节点前置内容列表
+    /*
+      {
+        name: '',// 一个唯一的类型标识
+        // 创建节点的显示内容：节点元素、宽高
+        createContent: (node) => {
+          return {
+            node: null,
+            width: 0,
+            height: 0
+          }
+        },
+        // 创建保存到节点实例的opt对象中的数据
+        createNodeData: () => {},
+        // 更新节点实例的opt数据，返回数据是否改变了
+        updateNodeData: () => {},
+      }
+    */
+    this.nodeInnerPrefixList = []
 
     // 画布
     this.initContainer()
@@ -96,6 +118,9 @@ class MindMap {
       this.initPlugin(plugin)
     })
 
+    // 添加必要的css样式
+    this.addCss()
+
     // 初始渲染
     this.render(this.opt.fit ? () => this.view.fit() : () => {})
     setTimeout(() => {
@@ -128,6 +153,8 @@ class MindMap {
   // 创建容器元素
   initContainer() {
     const { associativeLineIsAlwaysAboveNode } = this.opt
+    // 给容器元素添加一个类名
+    this.el.classList.add('smm-mind-map-container')
     // 节点关联线容器
     const createAssociativeLineDraw = () => {
       this.associativeLineDraw = this.draw.group()
@@ -135,6 +162,7 @@ class MindMap {
     }
     // 画布
     this.svg = SVG().addTo(this.el).size(this.width, this.height)
+
     // 容器
     this.draw = this.svg.group()
     this.draw.addClass('smm-container')
@@ -165,17 +193,46 @@ class MindMap {
     this.otherDraw.clear()
   }
 
+  // 追加必要的css样式
+  // 该样式在实例化时会动态添加到页面，同时导出为svg时也会添加到svg源码中
+  appendCss(key, str) {
+    this.cssTextMap[key] = str
+    this.removeCss()
+    this.addCss()
+  }
+
+  // 移除追加的css样式
+  removeAppendCss(key) {
+    if (this.cssTextMap[key]) {
+      delete this.cssTextMap[key]
+      this.removeCss()
+      this.addCss()
+    }
+  }
+
+  // 拼接必要的css样式
+  joinCss() {
+    return (
+      cssContent +
+      Object.keys(this.cssTextMap)
+        .map(key => {
+          return this.cssTextMap[key]
+        })
+        .join('\n')
+    )
+  }
+
   // 添加必要的css样式到页面
   addCss() {
     this.cssEl = document.createElement('style')
     this.cssEl.type = 'text/css'
-    this.cssEl.innerHTML = cssContent
+    this.cssEl.innerHTML = this.joinCss()
     document.head.appendChild(this.cssEl)
   }
 
   // 移除css
   removeCss() {
-    document.head.removeChild(this.cssEl)
+    if (this.cssEl) document.head.removeChild(this.cssEl)
   }
 
   //  渲染，部分渲染
@@ -191,7 +248,7 @@ class MindMap {
     this.renderer.reRender = true // 标记为重新渲染
     this.renderer.clearCache() // 清空节点缓存池
     this.clearDraw() // 清空画布
-    this.render(callback, (source = ''))
+    this.render(callback, source)
   }
 
   // 获取或更新容器尺寸位置信息
@@ -205,8 +262,21 @@ class MindMap {
 
   //  容器尺寸变化，调整尺寸
   resize() {
+    const oldWidth = this.width
+    const oldHeight = this.height
     this.getElRectInfo()
     this.svg.size(this.width, this.height)
+    if (oldWidth !== this.width || oldHeight !== this.height) {
+      // 如果画布宽高改变了需要触发一次渲染
+      if (this.demonstrate) {
+        // 如果存在演示插件，并且正在演示中，那么不需要触发重新渲染，否则会冲突
+        if (!this.demonstrate.isInDemonstrate) {
+          this.render()
+        }
+      } else {
+        this.render()
+      }
+    }
     this.emit('resize')
   }
 
@@ -236,7 +306,10 @@ class MindMap {
   //  设置主题
   initTheme() {
     // 合并主题配置
-    this.themeConfig = merge(theme[this.opt.theme], this.opt.themeConfig)
+    this.themeConfig = mergeTheme(
+      theme[this.opt.theme] || theme.default,
+      this.opt.themeConfig
+    )
     // 设置背景样式
     Style.setBackgroundStyle(this.el, this.themeConfig)
   }
@@ -285,7 +358,12 @@ class MindMap {
 
   // 更新配置
   updateConfig(opt = {}) {
+    this.emit('before_update_config', this.opt)
+    const lastOpt = {
+      ...this.opt
+    }
     this.opt = this.handleOpt(merge.all([defaultOpt, this.opt, opt]))
+    this.emit('after_update_config', this.opt, lastOpt)
   }
 
   //  获取当前布局结构
@@ -376,6 +454,9 @@ class MindMap {
   //  导出
   async export(...args) {
     try {
+      if (!this.doExport) {
+        throw new Error('请注册Export插件！')
+      }
       let result = await this.doExport.export(...args)
       return result
     } catch (error) {
@@ -396,11 +477,18 @@ class MindMap {
     if (![CONSTANTS.MODE.READONLY, CONSTANTS.MODE.EDIT].includes(mode)) {
       return
     }
-    this.opt.readonly = mode === CONSTANTS.MODE.READONLY
-    if (this.opt.readonly) {
+    const isReadonly = mode === CONSTANTS.MODE.READONLY
+    if (isReadonly === this.opt.readonly) return
+    if (isReadonly) {
+      // 如果处于编辑态，要隐藏所有的编辑框
+      if (this.renderer.textEdit.isShowTextEdit()) {
+        this.renderer.textEdit.hideEditTextBox()
+        this.command.originAddHistory()
+      }
       // 取消当前激活的元素
       this.execCommand('CLEAR_ACTIVE_NODE')
     }
+    this.opt.readonly = isReadonly
     this.emit('mode_change', mode)
   }
 
@@ -413,6 +501,11 @@ class MindMap {
     addContentToFooter,
     node
   } = {}) {
+    const { watermarkConfig, openPerformance } = this.opt
+    // 如果开启了性能模式，那么需要先渲染所有节点
+    if (openPerformance) {
+      this.renderer.forceLoadNode(node)
+    }
     const { cssTextList, header, headerHeight, footer, footerHeight } =
       handleGetSvgDataExtraContent({
         addContentToHeader,
@@ -432,7 +525,13 @@ class MindMap {
     // 需要裁减的区域
     let clipData = null
     if (node) {
-      clipData = getNodeTreeBoundingRect(node, rect.x, rect.y, paddingX, paddingY)
+      clipData = getNodeTreeBoundingRect(
+        node,
+        rect.x,
+        rect.y,
+        paddingX,
+        paddingY
+      )
     }
     // 内边距
     const fixHeight = 0
@@ -450,7 +549,7 @@ class MindMap {
     if (!ignoreWatermark && hasWatermark) {
       this.watermark.isInExport = true
       // 是否是仅导出时需要水印
-      const { onlyExport } = this.opt.watermarkConfig
+      const { onlyExport } = watermarkConfig
       // 是否需要重新绘制水印
       const needReDrawWatermark =
         rect.width > origWidth || rect.height > origHeight
@@ -475,7 +574,7 @@ class MindMap {
       this.watermark.isInExport = false
     }
     // 添加必要的样式
-    ;[cssContent, ...cssTextList].forEach(s => {
+    ;[this.joinCss(), ...cssTextList].forEach(s => {
       clone.add(SVG(`<style>${s}</style>`))
     })
     // 附加内容
@@ -509,7 +608,6 @@ class MindMap {
     // 恢复原先的大小和变换信息
     svg.size(origWidth, origHeight)
     draw.transform(origTransform)
-
     return {
       svg: clone, // 思维导图图形的整体svg元素，包括：svg（画布容器）、g（实际的思维导图组）
       svgHTML: clone.svg(), // svg字符串
@@ -530,8 +628,8 @@ class MindMap {
     let index = MindMap.hasPlugin(plugin)
     if (index === -1) {
       MindMap.usePlugin(plugin, opt)
-      this.initPlugin(plugin)
     }
+    this.initPlugin(plugin)
   }
 
   // 移除插件
@@ -550,6 +648,7 @@ class MindMap {
 
   // 实例化插件
   initPlugin(plugin) {
+    if (this[plugin.instanceName]) return
     this[plugin.instanceName] = new plugin({
       mindMap: this,
       pluginOpt: plugin.pluginOpt
@@ -561,10 +660,7 @@ class MindMap {
     this.emit('beforeDestroy')
     // 清除节点编辑框
     this.renderer.textEdit.hideEditTextBox()
-    // 清除关联线文字编辑框
-    if (this.associativeLine) {
-      this.associativeLine.hideEditTextBox()
-    }
+    this.renderer.textEdit.removeTextEditEl()
     // 移除插件
     ;[...MindMap.pluginList].forEach(plugin => {
       if (
@@ -581,9 +677,12 @@ class MindMap {
     this.svg.remove()
     // 去除给容器元素设置的背景样式
     Style.removeBackgroundStyle(this.el)
+    // 移除给容器元素添加的类名
+    this.el.classList.remove('smm-mind-map-container')
     this.el.innerHTML = ''
     this.el = null
     this.removeCss()
+    MindMap.instanceCount--
   }
 }
 
@@ -600,13 +699,20 @@ MindMap.hasPlugin = plugin => {
     return item === plugin
   })
 }
+MindMap.instanceCount = 0
 
 // 定义新主题
 MindMap.defineTheme = (name, config = {}) => {
   if (theme[name]) {
     return new Error('该主题名称已存在')
   }
-  theme[name] = merge(defaultTheme, config)
+  theme[name] = mergeTheme(defaultTheme, config)
+}
+// 移除主题
+MindMap.removeTheme = name => {
+  if (theme[name]) {
+    theme[name] = null
+  }
 }
 
 export default MindMap

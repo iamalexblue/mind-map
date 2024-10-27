@@ -13,10 +13,20 @@
       @click="exit"
       ref="exitDemonstrateBtnRef"
       v-if="isEnterDemonstrate"
+      @mousedown.stop
+      @mousemove.stop
+      @mouseup.stop
     >
       <span class="icon iconfont iconguanbi"></span>
     </div>
-    <div class="stepBox" ref="stepBoxRef" v-if="isEnterDemonstrate">
+    <div
+      class="stepBox"
+      ref="stepBoxRef"
+      v-if="isEnterDemonstrate"
+      @mousedown.stop
+      @mousemove.stop
+      @mouseup.stop
+    >
       <div class="jump" @click="prev" :class="{ disabled: curStepIndex <= 0 }">
         <span class="icon el-icon-back"></span>
       </div>
@@ -139,6 +149,7 @@ export default {
   top: 20px;
   cursor: pointer;
   z-index: 10001;
+  pointer-events: all;
 
   .icon {
     font-size: 28px;
@@ -150,6 +161,7 @@ export default {
   position: absolute;
   right: 40px;
   bottom: 20px;
+  pointer-events: all;
 
   z-index: 10001;
   display: flex;

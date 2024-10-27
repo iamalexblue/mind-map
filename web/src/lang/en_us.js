@@ -26,7 +26,41 @@ export default {
     nodeBorderType: 'Node border style',
     nodeUseLineStyle: 'Use only has bottom border style',
     otherConfig: 'Other config',
-    enableFreeDrag: 'Enable node free drag',
+    associativeLine: 'Associative line',
+    associativeLineWidth: 'Width',
+    associativeLineColor: 'Color',
+    associativeLineActiveWidth: 'Active width',
+    associativeLineActiveColor: 'Active color',
+    rootStyle: 'Root Node',
+    associativeLineText: 'Associative line text',
+    fontFamily: 'Font family',
+    fontSize: 'Font size',
+    rootLineStartPos: 'Root line start pos',
+    center: 'Center',
+    edge: 'Edge',
+    rainbowLines: 'Rainbow lines',
+    notUseRainbowLines: 'Not use rainbow lines',
+    outerFramePadding: 'Outer frame padding'
+  },
+  setting: {
+    title: 'Setting',
+    openPerformance: 'Enable performance mode',
+    enableFreeDrag: 'Enable node free drag(Beta)',
+    isEnableNodeRichText: 'Enable node rich text editing',
+    mousewheelAction: 'Mouse wheel behavior',
+    zoomView: 'Zoom view',
+    moveViewUpDown: 'Move view up and down',
+    mousewheelZoomActionReverse: 'Mouse Wheel Zoom',
+    mousewheelZoomActionReverse1: 'Zoom out forward and zoom in back',
+    mousewheelZoomActionReverse2: 'Zoom in forward and zoom out back',
+    createNewNodeBehavior: 'Behavior of creating new node',
+    default: 'Active new node and editing',
+    notActive: 'Not active new node',
+    activeOnly: 'Only active new node but not editing',
+    openRealtimeRenderOnNodeTextEdit:
+      'Enable real-time rendering effect for text editing',
+    isShowScrollbar: 'Is show scrollbar',
+    isUseHandDrawnLikeStyle: 'Is use hand drawn like style',
     watermark: 'Watermark',
     showWatermark: 'Is show watermark',
     onlyExport: 'Only export',
@@ -38,33 +72,12 @@ export default {
     watermarkAngle: 'Angle',
     watermarkTextOpacity: 'Text opacity',
     watermarkTextFontSize: 'Font size',
-    isEnableNodeRichText: 'Enable node rich text editing',
-    mousewheelAction: 'Mouse wheel behavior',
-    zoomView: 'Zoom view',
-    moveViewUpDown: 'Move view up and down',
-    associativeLine: 'Associative line',
-    associativeLineWidth: 'Width',
-    associativeLineColor: 'Color',
-    associativeLineActiveWidth: 'Active width',
-    associativeLineActiveColor: 'Active color',
-    mousewheelZoomActionReverse: 'Mouse Wheel Zoom',
-    mousewheelZoomActionReverse1: 'Zoom out forward and zoom in back',
-    mousewheelZoomActionReverse2: 'Zoom in forward and zoom out back',
-    createNewNodeBehavior: 'Behavior of creating new node',
-    default: 'Active new node and editing',
-    notActive: 'Not active new node',
-    activeOnly: 'Only active new node but not editing',
-    rootStyle: 'Root Node',
-    associativeLineText: 'Associative line text',
-    fontFamily: 'Font family',
-    fontSize: 'Font size',
-    isShowScrollbar: 'Is show scrollbar',
-    isUseHandDrawnLikeStyle: 'Is use hand drawn like style',
-    rootLineStartPos: 'Root line start pos',
-    center: 'Center',
-    right: 'Right',
-    rainbowLines: 'Rainbow lines',
-    notUseRainbowLines: 'Not use rainbow lines'
+    belowNode: 'Display below nodes',
+    tagPosition: 'Node tag position',
+    tagPositionRight: 'Text right',
+    tagPositionBottom: 'Text bottom',
+    alwaysShowExpandBtn: 'Always show expand btn',
+    enableAutoEnterTextEditWhenKeydown: 'Auto enter text edit when keydown'
   },
   color: {
     moreColor: 'More color'
@@ -99,7 +112,19 @@ export default {
     removeNote: 'Remove note',
     removeCustomStyles: 'Remove custom styles',
     removeAllNodeCustomStyles: 'Remove all node custom styles',
-    exportNodeToPng: 'Export node to png'
+    exportNodeToPng: 'Export node to png',
+    copyToClipboard: 'Copy to clipboard',
+    copyToSmm: 'SMM',
+    copyToJson: 'JSON',
+    copyToMarkdown: 'Markdown',
+    copyToTxt: 'Txt',
+    copyToPng: 'Png',
+    copySuccess: 'Copy success',
+    copyFail: 'Copy fail',
+    number: 'Number child nodes',
+    expandNodeChild: 'Expand all sub nodes',
+    addToDo: 'Add toDo',
+    removeToDo: 'Remove toDo'
   },
   count: {
     words: 'Words',
@@ -145,13 +170,15 @@ export default {
   import: {
     title: 'Import',
     selectFile: 'Select file',
-    supportFile: 'Support .smm、.json、.xmind、.xlsx、.md file',
-    enableFileTip: 'Please select .smm、.json、.xmind、.xlsx、.md file',
+    support: 'Support',
+    file: 'file',
+    pleaseSelect: 'Please select',
     maxFileNum: 'At most one file can be selected',
     notSelectTip: 'Please select the file to import',
     fileContentError: 'The file content is incorrect',
     importSuccess: 'Import success',
-    fileParsingFailed: 'File parsing failed'
+    fileParsingFailed: 'File parsing failed',
+    xmindCanvasSelectDialogTitle: 'Select the canvas to import'
   },
   navigatorToolbar: {
     openMiniMap: 'Open mini map',
@@ -201,7 +228,6 @@ export default {
     text: 'Text',
     fontFamily: 'Font family',
     fontSize: 'Font size',
-    lineHeight: 'Line height',
     color: 'color',
     addFontWeight: 'add font weight',
     italic: 'Italic',
@@ -225,7 +251,8 @@ export default {
     endColor: 'End',
     arrowDir: 'Arrow dir',
     arrowDirStart: 'Start',
-    arrowDirEnd: 'End'
+    arrowDirEnd: 'End',
+    direction: 'Direction'
   },
   theme: {
     title: 'Theme',
@@ -264,6 +291,7 @@ export default {
     painter: 'Painter',
     formula: 'Formula',
     attachment: 'Attachment',
+    outerFrame: 'Outer frame',
     more: 'More',
     selectFileTip: 'Please select a file',
     notSupportTip:
@@ -275,7 +303,11 @@ export default {
     fileOpenFailed: 'File open failed',
     defaultFileName: 'Mind map',
     creatingTip: 'Creating file',
-    directory: 'Directory'
+    directory: 'Directory',
+    newFileTip:
+      'Please export the currently edited file before creating a new one, Beware of content loss',
+    openFileTip:
+      'Please export the currently edited file before opening it, Beware of content loss'
   },
   edit: {
     newFeatureNoticeTitle: 'New feature reminder',
@@ -287,7 +319,8 @@ export default {
     yes: 'Yes',
     no: 'No',
     exportError: 'Export failed',
-    dragTip: 'Release here to import the file'
+    dragTip: 'Release here to import the file',
+    deleteNodeImgTip: 'Are you sure to delete the node image?'
   },
   mouseAction: {
     tip1:
@@ -300,7 +333,8 @@ export default {
     replacePlaceholder: 'Please enter replacement content',
     replace: 'Replace',
     replaceAll: 'Replace all',
-    cancel: 'Cancel'
+    cancel: 'Cancel',
+    noResult: 'No result'
   },
   nodeIconSidebar: {
     title: 'Icon/Sticker',
@@ -329,7 +363,8 @@ export default {
     loading: 'Loading, please wait...'
   },
   sourceCodeEdit: {
-    sourceCodeTip: 'It is not recommended to modify the style in rich text mode because it requires synchronous modification of data and HTML structure.',
+    sourceCodeTip:
+      'It is not recommended to modify the style in rich text mode because it requires synchronous modification of data and HTML structure.',
     format: 'Format',
     copy: 'Copy',
     confirm: 'Complete',
@@ -341,5 +376,25 @@ export default {
   attachment: {
     deleteAttachment: 'Delete attachment',
     tip: 'The attachment function is only available on the client side'
+  },
+  annotation: {
+    mark: 'Mark',
+    show: 'Show mark',
+    type: 'Type',
+    color: 'Color',
+    lineWidth: 'Line width',
+    padding: 'Padding',
+    animate: 'Animate'
+  },
+  nodeOuterFrame: {
+    outerFrameSetting: 'Setting',
+    deleteOuterFrame: 'Delete outer frame',
+    boxStyle: 'Box style',
+    boxColor: 'Box color',
+    fillColor: 'Fill color'
+  },
+  nodeTagStyle: {
+    placeholder: 'Please enter the tag content',
+    delete: 'Delete this tag'
   }
 }

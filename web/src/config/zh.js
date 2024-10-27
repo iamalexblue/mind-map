@@ -57,9 +57,6 @@ export const fontFamilyList = [
 // 字号
 export const fontSizeList = [10, 12, 16, 18, 24, 32, 48]
 
-// 行高
-export const lineHeightList = [1, 1.5, 2, 2.5, 3]
-
 // 颜色
 export const colorList = [
   '#4D4D4D',
@@ -97,7 +94,7 @@ export const colorList = [
   '#0C797D',
   '#0062B1',
   '#653294',
-  '#AB149E',
+  // '#AB149E',
   'transparent'
 ]
 
@@ -133,6 +130,10 @@ export const borderDasharrayList = [
   {
     name: '虚线6',
     value: '1, 5'
+  },
+  {
+    name: '虚线7',
+    value: '6, 4'
   }
 ]
 
@@ -260,6 +261,10 @@ export const backgroundSizeList = [
 export const store = {
   sidebarZIndex: 1 //侧边栏zIndex
 }
+const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+const ctrl = isMac ? '⌘' : 'Ctrl'
+const enter = isMac ? 'Return' : 'Enter'
+const macFn = isMac ? 'fn + ' : ''
 
 // 快捷键列表
 export const shortcutKeyList = [
@@ -269,12 +274,12 @@ export const shortcutKeyList = [
       {
         icon: 'icontianjiazijiedian',
         name: '插入下级节点',
-        value: 'Tab'
+        value: 'Tab | Insert'
       },
       {
         icon: 'iconjiedian',
         name: '插入同级节点',
-        value: 'Enter'
+        value: enter
       },
       {
         icon: 'icondodeparent',
@@ -284,17 +289,17 @@ export const shortcutKeyList = [
       {
         icon: 'iconshangyi',
         name: '上移节点',
-        value: 'Ctrl + ↑'
+        value: `${ctrl} + ↑`
       },
       {
         icon: 'iconxiayi',
         name: '下移节点',
-        value: 'Ctrl + ↓'
+        value: `${ctrl} + ↓`
       },
       {
         icon: 'icongaikuozonglan',
         name: '插入概要',
-        value: 'Ctrl + G'
+        value: `${ctrl} + G`
       },
       {
         icon: 'iconzhankai',
@@ -314,57 +319,57 @@ export const shortcutKeyList = [
       {
         icon: 'iconfuzhi',
         name: '复制节点',
-        value: 'Ctrl + C'
+        value: `${ctrl} + C`
       },
       {
         icon: 'iconjianqie',
         name: '剪切节点',
-        value: 'Ctrl + X'
+        value: `${ctrl} + X`
       },
       {
         icon: 'iconniantie',
         name: '粘贴节点',
-        value: 'Ctrl + V'
+        value: `${ctrl} + V`
       },
       {
         icon: 'iconbianji',
         name: '编辑节点',
-        value: 'F2'
+        value: macFn + 'F2'
       },
       {
         icon: 'iconhuanhang',
         name: '文本换行',
-        value: 'Shift + Enter'
+        value: `Shift + ${enter}`
       },
       {
         icon: 'iconhoutui-shi',
         name: '回退',
-        value: 'Ctrl + Z'
+        value: `${ctrl} + Z`
       },
       {
         icon: 'iconqianjin1',
         name: '前进',
-        value: 'Ctrl + Y'
+        value: `${ctrl} + Y`
       },
       {
         icon: 'iconquanxuan',
         name: '全选',
-        value: 'Ctrl + A'
+        value: `${ctrl} + A`
       },
       {
         icon: 'iconquanxuan',
         name: '多选',
-        value: '右键 / Ctrl + 左键'
+        value: `右键 / ${ctrl} + 左键`
       },
       {
         icon: 'iconzhengli',
         name: '一键整理布局',
-        value: 'Ctrl + L'
+        value: `${ctrl} + L`
       },
       {
         icon: 'iconsousuo',
         name: '搜索和替换',
-        value: 'Ctrl + F'
+        value: `${ctrl} + F`
       }
     ]
   },
@@ -374,27 +379,27 @@ export const shortcutKeyList = [
       {
         icon: 'iconfangda',
         name: '放大',
-        value: 'Ctrl + +'
+        value: `${ctrl} + +`
       },
       {
         icon: 'iconsuoxiao',
         name: '缩小',
-        value: 'Ctrl + -'
+        value: `${ctrl} + -`
       },
       {
         icon: 'iconfangda',
         name: '放大/缩小',
-        value: 'Ctrl + 鼠标滚动'
+        value: `${ctrl} + 鼠标滚动`
       },
       {
         icon: 'icondingwei',
         name: '回到根节点',
-        value: 'Ctrl + Enter'
+        value: `${ctrl} + ${enter}`
       },
       {
         icon: 'iconquanping1',
         name: '适应画布',
-        value: 'Ctrl + i'
+        value: `${ctrl} + i`
       }
     ]
   },
@@ -404,7 +409,7 @@ export const shortcutKeyList = [
       {
         icon: 'iconhuanhang',
         name: '文本换行',
-        value: 'Shift + Enter'
+        value: `Shift + ${enter}`
       },
       {
         icon: 'iconshanchu',
@@ -419,7 +424,7 @@ export const shortcutKeyList = [
       {
         icon: 'iconjiedian',
         name: '插入同级节点',
-        value: 'Enter'
+        value: enter
       },
       {
         icon: 'icondodeparent',
@@ -493,6 +498,10 @@ export const langList = [
     name: '简体中文'
   },
   {
+    value: 'zhtw',
+    name: '繁體中文'
+  },
+  {
     value: 'en',
     name: 'English'
   }
@@ -524,6 +533,11 @@ export const sidebarTriggerList = [
     name: '大纲',
     value: 'outline',
     icon: 'iconfuhao-dagangshu'
+  },
+  {
+    name: '设置',
+    value: 'setting',
+    icon: 'iconshezhi'
   },
   {
     name: '快捷键',
@@ -581,5 +595,129 @@ export const downTypeList = [
     type: 'txt',
     icon: 'iconTXT',
     desc: '纯文本文件'
+  },
+  {
+    name: 'FreeMind',
+    type: 'mm',
+    icon: 'iconfreemind',
+    desc: 'FreeMind软件格式'
+  },
+  {
+    name: 'Excel',
+    type: 'xlsx',
+    icon: 'iconfile-excel',
+    desc: 'Excel软件格式'
+  }
+]
+
+// 编号类型列表
+export const numberTypeList = [
+  {
+    name: '无编号',
+    value: ''
+  },
+  {
+    name: '1, 2, 3',
+    value: 1
+  },
+  {
+    name: '1., 2., 3.',
+    value: 2
+  },
+  {
+    name: '(1), (2), (3)',
+    value: 3
+  },
+  {
+    name: 'a., b., c.',
+    value: 4
+  },
+  {
+    name: 'A., B., C.',
+    value: 5
+  },
+  {
+    name: 'i., ii., iii.',
+    value: 6
+  },
+  {
+    name: 'I., II., III.',
+    value: 7
+  },
+  {
+    name: '一、, 二、, 三、',
+    value: 8
+  }
+]
+
+// 编号层级列表
+export const numberLevelList = [
+  {
+    name: '编号首层',
+    value: 1
+  },
+  {
+    name: '编号前两层',
+    value: 2
+  },
+  {
+    name: '编号前三层',
+    value: 3
+  },
+  {
+    name: '编号所有层',
+    value: 0
+  }
+]
+
+// 背景渐变方向
+export const linearGradientDirList = [
+  {
+    name: '从左到右',
+    value: '1',
+    start: [0, 0],
+    end: [1, 0]
+  },
+  {
+    name: '从右到左',
+    value: '2',
+    start: [1, 0],
+    end: [0, 0]
+  },
+  {
+    name: '从上到下',
+    value: '3',
+    start: [0, 0],
+    end: [0, 1]
+  },
+  {
+    name: '从下到上',
+    value: '4',
+    start: [0, 1],
+    end: [0, 0]
+  },
+  {
+    name: '从左上到右下',
+    value: '5',
+    start: [0, 0],
+    end: [1, 1]
+  },
+  {
+    name: '从左下到右上',
+    value: '6',
+    start: [0, 1],
+    end: [1, 0]
+  },
+  {
+    name: '从右上到左下',
+    value: '7',
+    start: [1, 0],
+    end: [0, 1]
+  },
+  {
+    name: '从右下到左上',
+    value: '8',
+    start: [1, 1],
+    end: [0, 0]
   }
 ]

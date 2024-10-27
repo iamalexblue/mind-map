@@ -5,6 +5,7 @@ import {
 } from '../constants/constant'
 import MersenneTwister from './mersenneTwister'
 import { ForeignObject } from '@svgdotjs/svg.js'
+import merge from 'deepmerge'
 
 //  深度优先遍历树
 export const walk = (
@@ -14,11 +15,12 @@ export const walk = (
   afterCallback,
   isRoot,
   layerIndex = 0,
-  index = 0
+  index = 0,
+  ancestors = []
 ) => {
   let stop = false
   if (beforeCallback) {
-    stop = beforeCallback(root, parent, isRoot, layerIndex, index)
+    stop = beforeCallback(root, parent, isRoot, layerIndex, index, ancestors)
   }
   if (!stop && root.children && root.children.length > 0) {
     let _layerIndex = layerIndex + 1
@@ -30,11 +32,13 @@ export const walk = (
         afterCallback,
         false,
         _layerIndex,
-        nodeIndex
+        nodeIndex,
+        [...ancestors, root]
       )
     })
   }
-  afterCallback && afterCallback(root, parent, isRoot, layerIndex, index)
+  afterCallback &&
+    afterCallback(root, parent, isRoot, layerIndex, index, ancestors)
 }
 
 //  广度优先遍历树
@@ -72,11 +76,11 @@ export const resizeImgSizeByOriginRatio = (
   let nRatio = width / height
   let mRatio = newWidth / newHeight
   if (nRatio > mRatio) {
-    // 固定高度
-    arr = [nRatio * newHeight, newHeight]
-  } else {
     // 固定宽度
     arr = [newWidth, newWidth / nRatio]
+  } else {
+    // 固定高度
+    arr = [nRatio * newHeight, newHeight]
   }
   return arr
 }
@@ -91,11 +95,11 @@ export const resizeImgSize = (width, height, maxWidth, maxHeight) => {
     } else {
       let mRatio = maxWidth / maxHeight
       if (nRatio > mRatio) {
-        // 固定高度
-        arr = [nRatio * maxHeight, maxHeight]
-      } else {
         // 固定宽度
         arr = [maxWidth, maxWidth / nRatio]
+      } else {
+        // 固定高度
+        arr = [nRatio * maxHeight, maxHeight]
       }
     }
   } else if (maxWidth) {
@@ -157,16 +161,10 @@ export const copyRenderTree = (tree, root, removeActiveState = false) => {
   tree.data = simpleDeepClone(root.data)
   if (removeActiveState) {
     tree.data.isActive = false
-    const generalization = tree.data.generalization
-    if (generalization) {
-      if (Array.isArray(generalization)) {
-        generalization.forEach(item => {
-          item.isActive = false
-        })
-      } else {
-        generalization.isActive = false
-      }
-    }
+    const generalizationList = formatGetNodeGeneralization(tree.data)
+    generalizationList.forEach(item => {
+      item.isActive = false
+    })
   }
   tree.children = []
   if (root.children && root.children.length > 0) {
@@ -213,7 +211,7 @@ export const copyNodeTree = (
 }
 
 //  图片转成dataURL
-export const imgToDataUrl = src => {
+export const imgToDataUrl = (src, returnBlob = false) => {
   return new Promise((resolve, reject) => {
     const img = new Image()
     // 跨域图片需要添加这个属性，否则画布被污染了无法导出图片
@@ -226,7 +224,13 @@ export const imgToDataUrl = src => {
         let ctx = canvas.getContext('2d')
         // 图片绘制到canvas里
         ctx.drawImage(img, 0, 0, img.width, img.height)
-        resolve(canvas.toDataURL())
+        if (returnBlob) {
+          canvas.toBlob(blob => {
+            resolve(blob)
+          })
+        } else {
+          resolve(canvas.toDataURL())
+        }
       } catch (e) {
         reject(e)
       }
@@ -948,7 +952,11 @@ export const addDataToAppointNodes = (appointNodes, data = {}) => {
 
 // 给指定的节点列表树数据添加uid，会修改原数据
 // createNewId默认为false，即如果节点不存在uid的话，会创建新的uid。如果传true，那么无论节点数据原来是否存在uid，都会创建新的uid
-export const createUidForAppointNodes = (appointNodes, createNewId = false) => {
+export const createUidForAppointNodes = (
+  appointNodes,
+  createNewId = false,
+  handle = null
+) => {
   const walk = list => {
     list.forEach(node => {
       if (!node.data) {
@@ -957,6 +965,7 @@ export const createUidForAppointNodes = (appointNodes, createNewId = false) => {
       if (createNewId || isUndef(node.data.uid)) {
         node.data.uid = createUid()
       }
+      handle && handle(node)
       if (node.children && node.children.length > 0) {
         walk(node.children)
       }
@@ -1072,14 +1081,15 @@ export const getDataFromClipboard = async () => {
   let text = null
   let img = null
   if (navigator.clipboard) {
-    text = await navigator.clipboard.readText()
     const items = await navigator.clipboard.read()
     if (items && items.length > 0) {
       for (const clipboardItem of items) {
         for (const type of clipboardItem.types) {
           if (/^image\//.test(type)) {
             img = await clipboardItem.getType(type)
-            break
+          } else if (type === 'text/plain') {
+            const blob = await clipboardItem.getType(type)
+            text = await blob.text()
           }
         }
       }
@@ -1175,9 +1185,18 @@ export const handleInputPasteText = (e, text) => {
   // 去除格式
   text = getTextFromHtml(text)
   // 去除换行
-  text = text.replaceAll(/\n/g, '')
-  const node = document.createTextNode(text)
-  selection.getRangeAt(0).insertNode(node)
+  // text = text.replaceAll(/\n/g, '')
+  const textArr = text.split(/\n/g)
+  const fragment = document.createDocumentFragment()
+  textArr.forEach((item, index) => {
+    const node = document.createTextNode(item)
+    fragment.appendChild(node)
+    if (index < textArr.length - 1) {
+      const br = document.createElement('br')
+      fragment.appendChild(br)
+    }
+  })
+  selection.getRangeAt(0).insertNode(fragment)
   selection.collapseToEnd()
 }
 
@@ -1341,10 +1360,8 @@ export const handleGetSvgDataExtraContent = ({
       if (!res) return
       const { el, cssText, height } = res
       if (el instanceof HTMLElement) {
-        el.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
-        const foreignObject = new ForeignObject()
-        foreignObject.height(height)
-        foreignObject.add(el)
+        addXmlns(el)
+        const foreignObject = createForeignObjectNode({ el, height })
         callback(foreignObject, height)
       }
       if (cssText) {
@@ -1376,31 +1393,34 @@ export const getNodeTreeBoundingRect = (
   y = 0,
   paddingX = 0,
   paddingY = 0,
-  excludeSelf = false
+  excludeSelf = false,
+  excludeGeneralization = false
 ) => {
   let minX = Infinity
   let maxX = -Infinity
   let minY = Infinity
   let maxY = -Infinity
   const walk = (root, isRoot) => {
-    if (!(isRoot && excludeSelf)) {
-      const { x, y, width, height } = root.group
-        .findOne('.smm-node-shape')
-        .rbox()
-      if (x < minX) {
-        minX = x
-      }
-      if (x + width > maxX) {
-        maxX = x + width
-      }
-      if (y < minY) {
-        minY = y
-      }
-      if (y + height > maxY) {
-        maxY = y + height
-      }
+    if (!(isRoot && excludeSelf) && root.group) {
+      try {
+        const { x, y, width, height } = root.group
+          .findOne('.smm-node-shape')
+          .rbox()
+        if (x < minX) {
+          minX = x
+        }
+        if (x + width > maxX) {
+          maxX = x + width
+        }
+        if (y < minY) {
+          minY = y
+        }
+        if (y + height > maxY) {
+          maxY = y + height
+        }
+      } catch (e) {}
     }
-    if (root._generalizationList.length > 0) {
+    if (!excludeGeneralization && root._generalizationList.length > 0) {
       root._generalizationList.forEach(item => {
         walk(item.generalizationNode)
       })
@@ -1418,6 +1438,49 @@ export const getNodeTreeBoundingRect = (
   maxX = maxX - x + paddingX
   maxY = maxY - y + paddingY
 
+  return {
+    left: minX,
+    top: minY,
+    width: maxX - minX,
+    height: maxY - minY
+  }
+}
+
+// 获取多个节点总的包围框
+export const getNodeListBoundingRect = (
+  nodeList,
+  x = 0,
+  y = 0,
+  paddingX = 0,
+  paddingY = 0
+) => {
+  let minX = Infinity
+  let maxX = -Infinity
+  let minY = Infinity
+  let maxY = -Infinity
+  nodeList.forEach(node => {
+    const { left, top, width, height } = getNodeTreeBoundingRect(
+      node,
+      x,
+      y,
+      paddingX,
+      paddingY,
+      false,
+      true
+    )
+    if (left < minX) {
+      minX = left
+    }
+    if (left + width > maxX) {
+      maxX = left + width
+    }
+    if (top < minY) {
+      minY = top
+    }
+    if (top + height > maxY) {
+      maxY = top + height
+    }
+  })
   return {
     left: minX,
     top: minY,
@@ -1453,6 +1516,7 @@ export const fullScreen = element => {
 
 // 退出全屏
 export const exitFullScreen = () => {
+  if (!document.fullscreenElement) return
   if (document.exitFullscreen) {
     document.exitFullscreen()
   } else if (document.webkitExitFullscreen) {
@@ -1460,4 +1524,99 @@ export const exitFullScreen = () => {
   } else if (document.mozCancelFullScreen) {
     document.mozCancelFullScreen()
   }
+}
+
+// 创建foreignObject节点
+export const createForeignObjectNode = ({ el, width, height }) => {
+  const foreignObject = new ForeignObject()
+  if (width !== undefined) {
+    foreignObject.width(width)
+  }
+  if (height !== undefined) {
+    foreignObject.height(height)
+  }
+  foreignObject.add(el)
+  return foreignObject
+}
+
+// 格式化获取节点的概要数据
+export const formatGetNodeGeneralization = data => {
+  const generalization = data.generalization
+  if (generalization) {
+    return Array.isArray(generalization) ? generalization : [generalization]
+  } else {
+    return []
+  }
+}
+
+/**
+ * 防御 XSS 攻击，过滤恶意 HTML 标签和属性
+ * @param {string} text 需要过滤的文本
+ * @returns {string} 过滤后的文本
+ */
+export const defenseXSS = text => {
+  text = String(text)
+
+  // 初始化结果变量
+  let result = text
+
+  // 使用正则表达式匹配 HTML 标签
+  const match = text.match(/<(\S*?)[^>]*>.*?|<.*? \/>/g)
+  if (match == null) {
+    // 如果没有匹配到任何标签，则直接返回原始文本
+    return text
+  }
+
+  // 遍历匹配到的标签
+  for (let value of match) {
+    // 定义白名单属性正则表达式（style、target、href）
+    const whiteAttrRegex = new RegExp(/(style|target|href)=["'][^"']*["']/g)
+
+    // 定义黑名单href正则表达式（javascript:）
+    const aHrefBlackRegex = new RegExp(/href=["']javascript:/g)
+
+    // 过滤 HTML 标签
+    const filterHtml = value.replace(
+      // 匹配属性键值对（如：key="value"）
+      /([a-zA-Z-]+)\s*=\s*["']([^"']*)["']/g,
+      text => {
+        // 如果属性值包含黑名单href或不在白名单中，则删除该属性
+        if (aHrefBlackRegex.test(text) || !whiteAttrRegex.test(text)) {
+          return ''
+        }
+
+        // 否则，保留该属性
+        return text
+      }
+    )
+
+    // 将过滤后的标签替换回原始文本
+    result = result.replace(value, filterHtml)
+  }
+
+  // 返回最终结果
+  return result
+}
+
+// 给节点添加命名空间
+export const addXmlns = el => {
+  el.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
+}
+
+// 给一组节点实例升序排序，依据其sortIndex值
+export const sortNodeList = nodeList => {
+  nodeList = [...nodeList]
+  nodeList.sort((a, b) => {
+    return a.sortIndex - b.sortIndex
+  })
+  return nodeList
+}
+
+// 合并主题配置
+export const mergeTheme = (dest, source) => {
+  return merge(dest, source, {
+    arrayMerge: (destinationArray, sourceArray) => {
+      return sourceArray
+    }
+  })
 }

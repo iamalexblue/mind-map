@@ -18,6 +18,7 @@ class Command {
     this.activeHistoryIndex = 0
     // 注册快捷键
     this.registerShortcutKeys()
+    this.originAddHistory = this.addHistory.bind(this)
     this.addHistory = throttle(
       this.addHistory,
       this.mindMap.opt.addHistoryTime,
@@ -104,7 +105,7 @@ class Command {
       return
     }
     const lastData =
-      this.history.length > 0 ? this.history[this.history.length - 1] : null
+      this.history.length > 0 ? this.history[this.activeHistoryIndex] : null
     const data = this.getCopyData()
     // 此次数据和上次一样则不重复添加
     if (lastData === data) return
@@ -143,7 +144,6 @@ class Command {
       )
       const data = simpleDeepClone(this.history[this.activeHistoryIndex])
       this.emitDataUpdatesEvent(lastData, data)
-      this.mindMap.emit('data_change', data)
       return data
     }
   }
@@ -164,7 +164,6 @@ class Command {
       )
       const data = simpleDeepClone(this.history[this.activeHistoryIndex])
       this.emitDataUpdatesEvent(lastData, data)
-      this.mindMap.emit('data_change', data)
       return data
     }
   }

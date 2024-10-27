@@ -26,19 +26,33 @@
       </div>
       <!-- 导出 -->
       <div class="toolbarBlock">
-        <div class="toolbarBtn" @click="openDirectory">
+        <div class="toolbarBtn" @click="openDirectory" v-if="!isMobile">
           <span class="icon iconfont icondakai"></span>
           <span class="text">{{ $t('toolbar.directory') }}</span>
         </div>
-        <div class="toolbarBtn" @click="createNewLocalFile">
-          <span class="icon iconfont iconxinjian"></span>
-          <span class="text">{{ $t('toolbar.newFile') }}</span>
-        </div>
-        <div class="toolbarBtn" @click="openLocalFile">
-          <span class="icon iconfont iconwenjian1"></span>
-          <span class="text">{{ $t('toolbar.openFile') }}</span>
-        </div>
-        <div class="toolbarBtn" @click="saveLocalFile">
+        <el-tooltip
+          effect="dark"
+          :content="$t('toolbar.newFileTip')"
+          placement="bottom"
+          v-if="!isMobile"
+        >
+          <div class="toolbarBtn" @click="createNewLocalFile">
+            <span class="icon iconfont iconxinjian"></span>
+            <span class="text">{{ $t('toolbar.newFile') }}</span>
+          </div>
+        </el-tooltip>
+        <el-tooltip
+          effect="dark"
+          :content="$t('toolbar.openFileTip')"
+          placement="bottom"
+          v-if="!isMobile"
+        >
+          <div class="toolbarBtn" @click="openLocalFile">
+            <span class="icon iconfont iconwenjian1"></span>
+            <span class="text">{{ $t('toolbar.openFile') }}</span>
+          </div>
+        </el-tooltip>
+        <div class="toolbarBtn" @click="saveLocalFile" v-if="!isMobile">
           <span class="icon iconfont iconlingcunwei"></span>
           <span class="text">{{ $t('toolbar.saveAs') }}</span>
         </div>
@@ -141,7 +155,7 @@ import { Notification } from 'element-ui'
 import exampleData from 'simple-mind-map/example/exampleData'
 import { getData } from '../../../api'
 import ToolbarNodeBtnList from './ToolbarNodeBtnList.vue'
-import { throttle } from 'simple-mind-map/src/utils/index'
+import { throttle, isMobile } from 'simple-mind-map/src/utils/index'
 
 /**
  * @Author: 王林
@@ -163,6 +177,7 @@ export default {
   },
   data() {
     return {
+      isMobile: isMobile(),
       list: [
         'back',
         'forward',
@@ -177,8 +192,10 @@ export default {
         'tag',
         'summary',
         'associativeLine',
-        'formula'
-        // 'attachment'
+        'formula',
+        // 'attachment',
+        'outerFrame',
+        'annotation'
       ],
       horizontalList: [],
       verticalList: [],
@@ -191,7 +208,8 @@ export default {
       },
       fileTreeVisible: false,
       rootDirName: '',
-      fileTreeExpand: true
+      fileTreeExpand: true,
+      waitingWriteToLocalFile: false
     }
   },
   computed: {
@@ -215,11 +233,13 @@ export default {
     this.computeToolbarShowThrottle = throttle(this.computeToolbarShow, 300)
     window.addEventListener('resize', this.computeToolbarShowThrottle)
     this.$bus.$on('lang_change', this.computeToolbarShowThrottle)
+    window.addEventListener('beforeunload', this.onUnload)
   },
   beforeDestroy() {
     this.$bus.$off('write_local_file', this.onWriteLocalFile)
     window.removeEventListener('resize', this.computeToolbarShowThrottle)
     this.$bus.$off('lang_change', this.computeToolbarShowThrottle)
+    window.removeEventListener('beforeunload', this.onUnload)
   },
   methods: {
     // 计算工具按钮如何显示
@@ -252,9 +272,20 @@ export default {
     // 监听本地文件读写
     onWriteLocalFile(content) {
       clearTimeout(this.timer)
+      if (fileHandle && this.isHandleLocalFile) {
+        this.waitingWriteToLocalFile = true
+      }
       this.timer = setTimeout(() => {
         this.writeLocalFile(content)
       }, 1000)
+    },
+
+    onUnload(e) {
+      if (this.waitingWriteToLocalFile) {
+        const msg = '存在未保存的数据'
+        e.returnValue = msg
+        return msg
+      }
     },
 
     // 加载本地文件树
@@ -412,6 +443,7 @@ export default {
     // 写入本地文件
     async writeLocalFile(content) {
       if (!fileHandle || !this.isHandleLocalFile) {
+        this.waitingWriteToLocalFile = false
         return
       }
       if (!this.isFullDataFile) {
@@ -421,6 +453,7 @@ export default {
       const writable = await fileHandle.createWritable()
       await writable.write(string)
       await writable.close()
+      this.waitingWriteToLocalFile = false
     },
 
     // 创建本地文件
